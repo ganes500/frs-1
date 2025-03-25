@@ -121,3 +121,46 @@ for csv_file in csv_files:
 for df in dfs:
     is_valid, message = validate_dataframe(df, n_cols=14, check_duplicates=True)
     print(is_valid, message)
+#JOin or merge
+join1 = pd.merge(model_auth_Rep_raw, model_collateral_raw)
+print(join1)
+join2 = pd.merge(model_auth_Rep_raw,model_config_raw)
+print(join2)
+
+df = model_auth_Rep_raw.copy()
+
+if all(col in df.columns for col in ["EAD","PD12","LGD","PDLT","Previous LGD","Reporting Date"]):
+    df["stage1ecl"] = df["EAD"] * df["PD12"] * df["LGD"]
+    df["stage2ecl"] = df["EAD"] * df["PDLT"] * df["LGD"]
+    df["stage3ecl"] = df["EAD"] * df["LGD"]
+
+    ecl_dataframe = df[["EAD", "PD12", "LGD", "PDLT", "stage1ecl", "stage2ecl", "stage3ecl","Reporting Date"]]
+
+    #  6: EAD Variation Report**
+    df["change_EAD"] = df["EAD"] - df["Previous EAD"]
+    df["percentage_change_EAD"] = ((df["EAD"] - df["Previous EAD"]) / df["Previous EAD"]) * 100
+
+    ead_dataframe = df[["EAD", "Previous EAD", "change_EAD", "percentage_change_EAD","Reporting Date"]]
+
+    # 7: LGD Variation Report**
+    df["change_LGD"] = df["LGD"] - df["Previous LGD"]
+    df["percentage_change_LGD"] = ((df["LGD"] - df["Previous LGD"]) / df["Previous LGD"]) * 100
+
+    lgd_dataframe = df[["LGD", "Previous LGD", "change_LGD", "percentage_change_LGD","Reporting Date"]]
+
+    #  Write Reports to Excel**
+    output_folder = r"E:\D\ganesh data\f\DA + Data Science\power bi\major project\reports"
+    output_file = os.path.join(output_folder, "ECL_Report.xlsx")
+
+    #  Create the directory if it does not exist
+    os.makedirs(output_folder, exist_ok=True)
+
+    with pd.ExcelWriter(output_file) as writer:
+        ecl_dataframe.to_excel(writer, sheet_name="ECL Report", index=False)
+        ead_dataframe.to_excel(writer, sheet_name="EAD Variation", index=False)
+        lgd_dataframe.to_excel(writer, sheet_name="LGD Variation", index=False)
+
+    print(f"Reports saved successfully at: {output_file}")
+
+else:
+    print("Error: Required columns missing for ECL and variation reports.")
